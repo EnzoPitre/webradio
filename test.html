@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambient Radio - Flow</title>
+    <!-- Les scripts ont été déplacés vers la fin du body -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background: #0a0e27;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        #root {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .glass-container {
+            backdrop-filter: blur(40px) saturate(180%);
+            background: rgba(15, 20, 40, 0.4);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            overflow: hidden;
+        }
+        
+        .album-glow {
+            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.3);
+        }
+        
+        .progress-bar {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(167, 139, 250, 0.6);
+            transition: all 0.2s ease;
+        }
+        
+        .progress-bar::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 30px rgba(167, 139, 250, 0.8);
+        }
+        
+        .progress-bar::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 20px rgba(167, 139, 250, 0.6);
+        }
+        
+        .btn-control {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-control:hover {
+            transform: translateY(-2px) scale(1.05);
+        }
+        
+        .btn-control:active {
+            transform: translateY(0) scale(0.98);
+        }
+        
+        .play-button {
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+            box-shadow: 0 10px 40px rgba(167, 139, 250, 0.4);
+        }
+        
+        .play-button:hover {
+            box-shadow: 0 15px 50px rgba(167, 139, 250, 0.6);
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        
+        .visualizer-bar {
+            transition: height 0.1s ease;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .track-change {
+            animation: trackChange 0.6s ease-out;
+        }
+        
+        @keyframes trackChange {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="root"></div>
+
+    <!-- 
+      Les scripts sont chargés en premier, dans l'ordre.
+    -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Le SDK Spotify est chargé en dernier avant notre script -->
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+    <!-- Votre script d'application -->
+    <script>
+        // 'React' et 'ReactDOM' sont maintenant garantis d'exister
+        const { useState, useEffect, useRef, useCallback, createElement: el } = React;
+
+        // ---- LOGIQUE SDK SPOTIFY GLOBALE ----
+        // Ce code s'exécute avant React
+        
+        // 1. Une variable pour stocker la logique d'initialisation de React
+        let _spotifyPlayerInit = null;
+        
+        // 2. Le SDK appellera cette fonction globale LORSQU'IL SERA PRÊT.
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            console.log("Spotify SDK est prêt (appel global).");
+            // Si React a déjà fourni la logique d'init (parce que le token était prêt en premier)
+            if (_spotifyPlayerInit) {
+                _spotifyPlayerInit();
+            }
+            // Sinon, React appellera _spotifyPlayerInit plus tard, 
+            // et _spotifyPlayerInit verra que le SDK est prêt (car window.Spotify existera).
+        };
+
+        // 3. Une fonction que React appellera pour fournir la logique d'init
+        // (cette fonction ne sera appelée que lorsque le token sera prêt)
+        function setSpotifyPlayerLogic(initLogic) {
+            _spotifyPlayerInit = initLogic;
+            // Si le SDK est déjà prêt (il a appelé onSpotifyWebPlaybackSDKReady en premier)
+            if (window.Spotify) {
+                _spotifyPlayerInit();
+            }
+        }
+        // ---- FIN DE LA LOGIQUE SDK ----
+
+
+        // Configuration Spotify
+        const SPOTIFY_CONFIG = {
+            clientId: '38be8d11493a458a8fb9d354546c8a22',
+            redirectUri: 'https://enzopitre.github.io/webradio/',
+            scopes: [
+                'streaming',
+                'user-read-email',
+                'user-read-private',
+                'user-read-playback-state',
+                'user-modify-playback-state',
+                'user-read-currently-playing'
+            ]
+        };
+
+        // Utilitaires PKCE
+        function generateRandomString(length) {
+            const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const values = crypto.getRandomValues(new Uint8Array(length));
+            return values.reduce((acc, x) => acc + possible[x % possible.length], "");
+        }
+
+        async function sha256(plain) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(plain);
+            return window.crypto.subtle.digest('SHA-256', data);
+        }
+
+        function base64encode(input) {
+            return btoa(String.fromCharCode(...new Uint8Array(input)))
+                .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
+        // Gestionnaire d'authentification Spotify
+        class SpotifyAuth {
+            static async login() {
+                const codeVerifier = generateRandomString(64);
+                const hashed = await sha256(codeVerifier);
+                const codeChallenge = base64encode(hashed);
+
+                localStorage.setItem('code_verifier', codeVerifier);
+
+                const authUrl = new URL("https://accounts.spotify.com/authorize");
+                const params = {
+                    response_type: 'code',
+                    client_id: SPOTIFY_CONFIG.clientId,
+                    scope: SPOTIFY_CONFIG.scopes.join(' '),
+                    code_challenge_method: 'S256',
+                    code_challenge: codeChallenge,
+                    redirect_uri: SPOTIFY_CONFIG.redirectUri,
+                };
+
+                authUrl.search = new URLSearchParams(params).toString();
+                window.location.href = authUrl.toString();
+            }
+
+            static async handleCallback() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                if (!code) return null;
+
+                const codeVerifier = localStorage.getItem('code_verifier');
+                const payload = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_id: SPOTIFY_CONFIG.clientId,
+                        grant_type: 'authorization_code',
+                        code,
+                        redirect_uri: SPOTIFY_CONFIG.redirectUri,
+                        code_verifier: codeVerifier,
+                    }),
+                };
+
+                const response = await fetch('https://accounts.spotify.com/api/token', payload);
+                const data = await response.json();
+
+                if (data.access_token) {
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('refresh_token', data.refresh_token);
+                    window.history.replaceState({}, document.title, SPOTIFY_CONFIG.redirectUri);
+                    return data.access_token;
+                }
+                return null;
+            }
+
+            static getToken() {
+                return localStorage.getItem('access_token');
+            }
+
+            static logout() {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                localStorage.removeItem('code_verifier');
+            }
+        }
+
+        // Fond animé Three.js avec effet flow ambient
+        function AnimatedBackground({ intensity, audioLevel }) {
+            useEffect(() => {
+                const container = document.getElementById('canvas-container');
+                if (!container) return;
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                container.appendChild(renderer.domElement);
+
+                const vertexShader = `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+
+                const fragmentShader = `
+                    uniform float uTime;
+                    uniform float uIntensity;
+                    uniform float uAudioLevel;
+                    varying vec2 vUv;
+
+                    vec3 palette(float t) {
+                        vec3 a = vec3(0.5, 0.5, 0.5);
+                        vec3 b = vec3(0.5, 0.5, 0.5);
+                        vec3 c = vec3(1.0, 1.0, 1.0);
+                        vec3 d = vec3(0.263, 0.416, 0.557);
+                        return a + b * cos(6.28318 * (c * t + d));
+                    }
+
+                    void main() {
+                        vec2 uv = (vUv - 0.5) * 2.0;
+                        vec2 uv0 = uv;
+                        vec3 finalColor = vec3(0.0);
+
+                        for (float i = 0.0; i < 3.0; i++) {
+                            uv = fract(uv * 1.5) - 0.5;
+
+                            float d = length(uv) * exp(-length(uv0));
+                            vec3 col = palette(length(uv0) + i * 0.4 + uTime * 0.15);
+
+                            d = sin(d * 8.0 + uTime * 0.5 + uAudioLevel * 2.0) / 8.0;
+                            d = abs(d);
+                            d = pow(0.01 / d, 1.2);
+
+                            finalColor += col * d * uIntensity;
+                        }
+
+                        float vignette = 1.0 - length(uv0) * 0.3;
+                        finalColor *= vignette;
+                        
+                        vec3 baseColor = vec3(0.05, 0.08, 0.15);
+                        finalColor = mix(baseColor, finalColor, 0.7);
+
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `;
+
+                const geometry = new THREE.PlaneGeometry(10, 10);
+                const material = new THREE.ShaderMaterial({
+                    vertexShader,
+                    fragmentShader,
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uIntensity: { value: intensity || 0.8 },
+                        uAudioLevel: { value: 0 }
+                    }
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+                camera.position.z = 5;
+
+                let time = 0;
+                let animationFrameId = null;
+                function animate() {
+                    animationFrameId = requestAnimationFrame(animate);
+                    time += 0.005;
+                    material.uniforms.uTime.value = time;
+                    material.uniforms.uAudioLevel.value = audioLevel || 0;
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                function handleResize() {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+                window.addEventListener('resize', handleResize);
+
+                return () => {
+                    window.removeEventListener('resize', handleResize);
+                    cancelAnimationFrame(animationFrameId);
+                    if (container.contains(renderer.domElement)) {
+                        container.removeChild(renderer.domElement);
+                    }
+                    renderer.dispose();
+                    material.dispose();
+                    geometry.dispose();
+                };
+            }, [intensity, audioLevel]);
+
+            return null;
+        }
+
+        // Hook Spotify
+        function useSpotify() {
+            const [token, setToken] = useState(null);
+            const [player, setPlayer] = useState(null);
+            const [currentTrack, setCurrentTrack] = useState(null);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [progress, setProgress] = useState(0);
+            const [volume, setVolume] = useState(70);
+
+            useEffect(() => {
+                async function initAuth() {
+                    const existingToken = SpotifyAuth.getToken();
+                    if (existingToken) {
+                        setToken(existingToken);
+                    } else {
+                        const newToken = await SpotifyAuth.handleCallback();
+                        if (newToken) setToken(newToken);
+                    }
+                }
+                initAuth();
+            }, []);
+
+            useEffect(() => {
+                if (!token) return;
+                
+                // Le token est prêt. Donnons notre logique d'initialisation au gestionnaire global.
+                setSpotifyPlayerLogic(() => {
+                    // Cette fonction ne s'exécutera que lorsque
+                    // 1. Le Token est prêt (cet useEffect)
+                    // 2. Le SDK est prêt (vérifié par setSpotifyPlayerLogic)
+                    
+                    const spotifyPlayer = new Spotify.Player({
+                        name: 'Ambient Flow Radio',
+                        getOAuthToken: cb => { cb(token); },
+                        volume: 0.7
+                    });
+
+                    spotifyPlayer.addListener('ready', ({ device_id }) => {
+                        console.log('Player ready');
+                    });
+
+                    spotifyPlayer.addListener('player_state_changed', state => {
+                        if (!state) return;
+                        
+                        const track = state.track_window.current_track;
+                        setCurrentTrack({
+                            id: track.id,
+                            title: track.name,
+                            artist: track.artists.map(a => a.name).join(', '),
+                            album: track.album.name,
+                            albumArtUrl: track.album.images[0]?.url || '', // Fallback
+                            duration_ms: state.duration,
+                            progress_ms: state.position,
+                        });
+                        setIsPlaying(!state.paused);
+                        setProgress(state.position);
+                    });
+                    
+                    spotifyPlayer.addListener('authentication_error', ({ message }) => {
+                        console.error('Erreur d\'authentification:', message);
+                        SpotifyAuth.logout();
+                        setToken(null);
+                    });
+                    
+                    spotifyPlayer.addListener('account_error', ({ message }) => {
+                        console.error('Erreur de compte (Premium requis?):', message);
+                    });
+                    
+                    spotifyPlayer.addListener('initialization_error', ({ message }) => {
+                        console.error('Erreur d\'initialisation:', message);
+                    });
+
+                    spotifyPlayer.connect();
+                    setPlayer(spotifyPlayer);
+                });
+
+            }, [token]);
+
+            const togglePlay = useCallback(() => {
+                if (player) player.togglePlay();
+            }, [player]);
+
+            const nextTrack = useCallback(() => {
+                if (player) player.nextTrack();
+            }, [player]);
+
+            const previousTrack = useCallback(() => {
+                if (player) player.previousTrack();
+            }, [player]);
+
+            const seek = useCallback((position) => {
+                if (player) player.seek(position);
+            }, [player]);
+
+            const changeVolume = useCallback((vol) => {
+                if (player) {
+                    player.setVolume(vol / 100);
+                    setVolume(vol);
+                }
+            }, [player]);
+
+            return {
+                token,
+                currentTrack,
+                isPlaying,
+                progress,
+                volume,
+                login: SpotifyAuth.login,
+                logout: SpotifyAuth.logout,
+                togglePlay,
+                nextTrack,
+                previousTrack,
+                seek,
+                changeVolume
+            };
+        }
+
+        // Visualiseur audio simple
+        function AudioVisualizer({ isPlaying }) {
+            const [bars, setBars] = useState([0, 0, 0, 0, 0]);
+
+            useEffect(() => {
+                if (!isPlaying) {
+                    setBars([0, 0, 0, 0, 0]);
+                    return;
+                }
+
+                const interval = setInterval(() => {
+                    setBars([
+                        Math.random() * 40 + 10,
+                        Math.random() * 50 + 15,
+                        Math.random() * 60 + 20,
+                        Math.random() * 50 + 15,
+                        Math.random() * 40 + 10
+                    ]);
+                }, 150);
+
+                return () => clearInterval(interval);
+            }, [isPlaying]);
+
+            return el('div', {
+                className: 'flex items-end justify-center gap-1 h-16'
+            }, bars.map((height, i) => 
+                el('div', {
+                    key: i,
+                    className: 'w-2 bg-gradient-to-t from-purple-400 to-pink-400 rounded-full visualizer-bar',
+                    style: { height: height + 'px' }
+                })
+            ));
+        }
+
+        // Formater temps
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return mins + ':' + secs.toString().padStart(2, '0');
+        }
+
+        // Composant principal
+        function Player() {
+            const spotify = useSpotify();
+            const [audioLevel, setAudioLevel] = useState(0);
+
+            useEffect(() => {
+                if (spotify.isPlaying) {
+                    const interval = setInterval(() => {
+                        setAudioLevel(Math.random() * 0.8 + 0.2);
+                    }, 100);
+                    return () => clearInterval(interval);
+                }
+            }, [spotify.isPlaying]);
+
+            if (!spotify.token) {
+                return el('div', null,
+                    el(AnimatedBackground, { intensity: 0.6, audioLevel: 0 }),
+                    el('div', {
+                        className: 'glass-container p-12 text-center max-w-md fade-in',
+                        style: { minWidth: '400px' }
+                    },
+                        el('div', { className: 'mb-8 float-animation' }, 
+                            el('div', {
+                                className: 'w-24 h-24 mx-auto bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center',
+                                style: { boxShadow: '0 20px 60px rgba(167, 139, 250, 0.4)' }
+                            },
+                                el('svg', {
+                                    className: 'w-12 h-12 text-white',
+                                    fill: 'currentColor',
+                                    viewBox: '0 0 24 24'
+                                },
+                                    el('path', {
+                                        d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z'
+                                    })
+                                )
+                            )
+                        ),
+                        el('h1', {
+                            className: 'text-5xl font-light text-white mb-3',
+                            style: { letterSpacing: '0.05em' }
+                        }, 'Ambient Flow'),
+                        el('p', {
+                            className: 'text-gray-400 mb-10 font-light text-lg'
+                        }, 'Votre espace musical immersif'),
+                        el('button', {
+                            onClick: spotify.login,
+                            className: 'play-button text-white px-10 py-4 rounded-full font-medium text-lg btn-control'
+                        }, 'Connecter Spotify')
+                    )
+                );
+            }
+
+            return el('div', null,
+                el(AnimatedBackground, { intensity: 1.0, audioLevel: audioLevel }),
+                el('div', {
+                    className: 'glass-container p-8 md:p-10 max-w-5xl w-full fade-in',
+                    style: { minHeight: '500px' }
+                }, 
+                    spotify.currentTrack ? 
+                        el('div', { className: 'flex flex-col md:flex-row gap-10 track-change' },
+                            el('div', {
+                                className: 'flex-shrink-0 flex flex-col items-center gap-6'
+                            },
+                                el('img', {
+                                    src: spotify.currentTrack.albumArtUrl || '', // Fallback
+                                    alt: spotify.currentTrack.album,
+                                    className: 'w-72 h-72 rounded-3xl shadow-2xl object-cover album-glow',
+                                    style: { border: '1px solid rgba(255, 255, 255, 0.1)' }
+                                }),
+                                el(AudioVisualizer, { isPlaying: spotify.isPlaying })
+                            ),
+                            
+                            el('div', {
+                                className: 'flex-1 flex flex-col justify-between min-h-full'
+                            },
+                                el('div', null,
+                                    el('h2', {
+                                        className: 'text-4xl md:text-5xl font-light text-white mb-3 leading-tight'
+                                    }, spotify.currentTrack.title),
+                                    el('p', {
+                                        className: 'text-2xl text-purple-300 font-light italic mb-2'
+                                    }, spotify.currentTrack.artist),
+                                    el('p', {
+                                        className: 'text-base text-gray-400 font-light'
+                                    }, spotify.currentTrack.album)
+                                ),
+                                
+                                el('div', { className: 'my-8' },
+                                    el('input', {
+                                        type: 'range',
+                                        min: 0,
+                                        max: spotify.currentTrack.duration_ms,
+                                        value: spotify.progress,
+                                        onChange: (ev) => spotify.seek(parseInt(ev.target.value)),
+                                        className: 'progress-bar w-full'
+                                    }),
+                                    el('div', {
+                                        className: 'flex justify-between text-sm text-gray-400 mt-3 font-light'
+                                    },
+                                        el('span', null, formatTime(spotify.progress)),
+                                        el('span', null, formatTime(spotify.currentTrack.duration_ms))
+                                    )
+                                ),
+                                
+                                el('div', {
+                                    className: 'flex items-center justify-center gap-8 mb-6'
+                                },
+                                    el('button', {
+                                        onClick: spotify.previousTrack,
+                                        className: 'text-gray-300 hover:text-white btn-control'
+                                    }, 
+                                        el('svg', {
+                                            className: 'w-10 h-10',
+                                            fill: 'currentColor',
+                                            viewBox: '0 0 24 24'
+                                        },
+                                            el('path', { d: 'M6 6h2v12H6zm3.5 6l8.5 6V6z' })
+                                        )
+                                    ),
+                                    el('button', {
+                                        onClick: spotify.togglePlay,
+                                        className: 'play-button rounded-full p-5 btn-control'
+                                    }, 
+                                        el('svg', {
+                                            className: 'w-10 h-10 text-white',
+                                            fill: 'currentColor',
+                                            viewBox: '0 0 24 24'
+                                        },
+                                            spotify.isPlaying ?
+                                                el('path', { d: 'M6 4h4v16H6V4zm8 0h4v16h-4V4z' }) :
+                                                el('path', { d: 'M8 5v14l11-7z' })
+                                        )
+                                    ),
+                                    el('button', {
+                                        onClick: spotify.nextTrack,
+                                        className: 'text-gray-300 hover:text-white btn-control'
+                                    }, 
+                                        el('svg', {
+                                            className: 'w-10 h-10',
+                                            fill: 'currentColor',
+                                            viewBox: '0 0 24 24'
+                                        },
+                                            el('path', { d: 'M16 18h2V6h-2zm-11-7l8.5-6v12z' })
+                                        )
+                                    )
+                                ),
+                                
+                                el('div', {
+                                    className: 'flex items-center gap-4'
+                                },
+                                    el('svg', {
+                                        className: 'w-6 h-6 text-gray-300',
+                                        fill: 'currentColor',
+                                        viewBox: '0 0 24 24'
+                                    },
+                                        el('path', { d: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z' })
+                                    ),
+                                    el('input', {
+                                        type: 'range',
+                                        min: 0,
+                                        max: 100,
+                                        value: spotify.volume,
+                                        onChange: (ev) => spotify.changeVolume(parseInt(ev.target.value)),
+                                        className: 'progress-bar flex-1'
+                                    })
+                                )
+                            )
+                        ) :
+                        el('div', { className: 'text-center py-20' },
+                            el('div', { className: 'mb-6 pulse-glow' },
+                                el('svg', {
+                                    className: 'w-20 h-20 text-purple-400 mx-auto',
+                                    fill: 'currentColor',
+                                    viewBox: '0 0 24 24'
+                                },
+                                    el('path', { d: 'M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z' })
+                                )
+                            ),
+                            el('p', {
+                                className: 'text-2xl text-white font-light mb-2'
+                            }, 'En attente de musique...'),
+                            el('p', {
+                                className: 'text-gray-400 font-light'
+                            }, 'Lancez une piste sur Spotify pour commencer')
+                        )
+                    ,
+                    el('div', {
+                        className: 'mt-8 flex justify-end'
+                    },
+                        el('button', {
+                            onClick: spotify.logout,
+                            className: 'text-sm text-gray-400 hover:text-white transition-colors font-light'
+                        }, 'Déconnexion')
+                    )
+                )
+            );
+        }
+
+        // Rendu de l'application
+        // 'ReactDOM' est maintenant garanti d'exister
+        // CORRECTION : Passage à l'API React 18
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(el(Player));
+    </script>
+</body>
+</html>
+
