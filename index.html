@@ -24,7 +24,7 @@
             justify-content: center;
         }
 
-        /* NOUVEAU : Vidéo en arrière-plan */
+        /* Vidéo en arrière-plan */
         #video-bg {
             position: fixed;
             top: 50%;
@@ -154,8 +154,7 @@
             100% { opacity: 1; transform: scale(1); }
         }
 
-        /* NOUVEAU : Style pour les éléments dynamiques */
-        /* Un conteneur pour injecter les styles dynamiques (couleur d'accent) */
+        /* Style pour les éléments dynamiques */
         #dynamic-styles {
             display: none;
         }
@@ -163,7 +162,7 @@
     </style>
 </head>
 <body>
-    <!-- NOUVEAU : Vidéo de fond -->
+    <!-- Vidéo de fond -->
     <video autoplay muted loop id="video-bg">
         <!-- 
             IMPORTANT : Remplacez ceci par l'URL de votre vidéo hébergée.
@@ -174,10 +173,9 @@
         Votre navigateur ne supporte pas la vidéo.
     </video>
     
-    <!-- SUPPRIMÉ : particle-container -->
     <div id="root"></div>
 
-    <!-- NOUVEAU : Conteneur pour les styles dynamiques -->
+    <!-- Conteneur pour les styles dynamiques -->
     <style id="dynamic-styles"></style>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -205,8 +203,6 @@
             }
         }
         // ---- FIN DE LA LOGIQUE SDK ----
-        
-        // SUPPRIMÉ : createParticles
         
         // --- Utilitaire pour extraire la couleur moyenne ---
         function getAverageRGB(imgEl) {
@@ -254,7 +250,7 @@
                 'user-read-email',
                 'user-read-private',
                 'user-read-playback-state',
-                'user-modify-playback-state',
+                'user-modify-playback-state', // Déjà présent, couvre setShuffle et setRepeat
                 'user-read-currently-playing'
             ]
         };
@@ -328,7 +324,7 @@
             }
         }
 
-        // Hook Spotify (inchangé)
+        // Hook Spotify
         function useSpotify() {
             const [token, setToken] = useState(null);
             const [player, setPlayer] = useState(null);
@@ -337,6 +333,10 @@
             const [progress, setProgress] = useState(0);
             const [volume, setVolume] = useState(70);
             const progressIntervalRef = useRef(null);
+            
+            // NOUVEAU : États pour Shuffle et Repeat
+            const [shuffle, setShuffle] = useState(false);
+            const [repeatMode, setRepeatMode] = useState(0); // 0=off, 1=context, 2=track
 
             useEffect(() => {
                 async function initAuth() {
@@ -377,6 +377,10 @@
                         });
                         setIsPlaying(!state.paused);
                         setProgress(state.position);
+                        
+                        // MISE À JOUR : Récupérer l'état de shuffle et repeat
+                        setShuffle(state.shuffle);
+                        setRepeatMode(state.repeat_mode);
                     });
                     
                     spotifyPlayer.addListener('authentication_error', ({ message }) => {
@@ -418,11 +422,20 @@
                 player?.setVolume(vol / 100);
                 setVolume(vol);
             }, [player]);
+            
+            // NOUVEAU : Fonctions Shuffle et Repeat
+            const toggleShuffle = useCallback(() => player?.setShuffle(!shuffle), [player, shuffle]);
+            const toggleRepeat = useCallback(() => {
+                const nextMode = (repeatMode + 1) % 3; // Cycle 0 -> 1 -> 2 -> 0
+                player?.setRepeatMode(nextMode);
+            }, [player, repeatMode]);
 
             return {
                 token, currentTrack, isPlaying, progress, volume,
+                shuffle, repeatMode, // Exposer les nouveaux états
                 login: SpotifyAuth.login, logout: SpotifyAuth.logout,
-                togglePlay, nextTrack, previousTrack, seek, changeVolume
+                togglePlay, nextTrack, previousTrack, seek, changeVolume,
+                toggleShuffle, toggleRepeat // Exposer les nouvelles fonctions
             };
         }
 
@@ -468,15 +481,64 @@
             const secs = seconds % 60;
             return mins + ':' + secs.toString().padStart(2, '0');
         }
+        
+        // --- NOUVELLES ICÔNES ---
+        function ShuffleIcon({ className }) {
+            return el('svg', { className, fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', xmlns: 'http://www.w3.org/2000/svg' },
+                el('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M16 3h5v5M4 20L21 3M21 16v5h-5M4 4l7 7' })
+            );
+        }
+        function RepeatIcon({ className }) {
+            return el('svg', { className, fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', xmlns: 'http://www.w3.org/2000/svg' },
+                el('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3' })
+            );
+        }
+        function RepeatOneIcon({ className }) {
+            return el('svg', { className, fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', xmlns: 'http://www.w3.org/2000/svg' },
+                el('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3m7-7v4m0-4H9m2 0h1a1 1 0 011 1v2a1 1 0 01-1 1h-1m-1-4l-1 1' })
+            );
+        }
+        function MaximizeIcon({ className }) {
+             return el('svg', { className, fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', xmlns: 'http://www.w3.org/2000/svg' },
+                el('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M4 8V4h4M4 4l5 5m11-5h-4v4m4-4l-5 5M4 16v4h4m-4 0l5-5m11 5h-4v-4m4 4l-5-5' })
+            );
+        }
+        function MinimizeIcon({ className }) {
+            return el('svg', { className, fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', xmlns: 'http://www.w3.org/2000/svg' },
+                el('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M15 19v-4h4M15 19l-5-5M9 5v4H5M9 5l5 5M15 5v4h4M15 5l-5 5M9 19v-4H5M9 19l5-5' })
+            );
+        }
+        // --- FIN ICÔNES ---
 
         // Composant principal
         function Player() {
             const spotify = useSpotify();
-            const [accentColor, setAccentColor] = useState(null); // État pour la couleur d'accent
+            const [accentColor, setAccentColor] = useState(null);
             
-            // SUPPRIMÉ : useEffect pour les particules
+            // NOUVEAU : État Plein Écran
+            const [isFullscreen, setIsFullscreen] = useState(false);
             
-            // --- MODIFIÉ : Effet pour changer la COULEUR D'ACCENT (plus le fond) ---
+            // NOUVEAU : Logique Plein Écran
+            const toggleFullscreen = useCallback(() => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }, []);
+            
+            // NOUVEAU : Listener Plein Écran
+            useEffect(() => {
+                const onFullscreenChange = () => {
+                    setIsFullscreen(!!document.fullscreenElement);
+                };
+                document.addEventListener('fullscreenchange', onFullscreenChange);
+                return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+            }, []);
+            
+            // Effet pour la couleur d'accent (inchangé)
             useEffect(() => {
                 const defaultAccent = '#FFB347'; // Orange par défaut
                 
@@ -484,11 +546,9 @@
                     setAccentColor(defaultAccent);
                     return;
                 }
-
                 const img = new Image();
                 img.crossOrigin = "Anonymous";
                 img.src = spotify.currentTrack.albumArtUrl;
-
                 img.onload = () => {
                     try {
                         const avgColor = getAverageRGB(img);
@@ -502,33 +562,29 @@
                     console.error("Erreur chargement image (CORS), couleur d'accent par défaut.");
                     setAccentColor(defaultAccent);
                 };
+            }, [spotify.currentTrack]);
 
-            }, [spotify.currentTrack]); // Se redéclenche à chaque changement de piste
-            // --- FIN Effet Couleur ---
-
-            // --- NOUVEAU : Effet pour injecter les styles CSS dynamiques ---
+            // Effet pour les styles CSS (inchangé)
             useEffect(() => {
                 const styleTag = document.getElementById('dynamic-styles');
                 if (!styleTag || !accentColor) return;
-
-                // Calcule une couleur de texte (noir ou blanc) basée sur la luminosité de l'accent
                 const [r, g, b] = accentColor.match(/\d+/g).map(Number);
                 const brightness = (r * 299 + g * 587 + b * 114) / 1000;
                 const textColor = brightness > 125 ? '#000' : '#fff';
-
                 styleTag.innerHTML = `
-                    .album-glow { box-shadow: 0 15px 45px ${accentColor}66; } /* 66 = 40% opacité */
+                    .album-glow { box-shadow: 0 15px 45px ${accentColor}66; }
                     .progress-bar::-webkit-slider-thumb { background: ${accentColor}; box-shadow: 0 0 15px ${accentColor}99; }
                     .progress-bar::-moz-range-thumb { background: ${accentColor}; box-shadow: 0 0 15px ${accentColor}99; }
                     .play-button { background: ${accentColor}; color: ${textColor}; box-shadow: 0 8px 30px ${accentColor}66; }
                     .play-button:hover { box-shadow: 0 12px 40px ${accentColor}99; }
                     .visualizer-bar { background: ${accentColor}; }
+                    .btn-control-active { color: ${accentColor}; }
                 `;
             }, [accentColor]);
-            // --- FIN Effet Styles ---
 
 
             if (!spotify.token) {
+                // ... (Code de connexion inchangé)
                 return el('div', {
                         className: 'glass-container p-12 text-center max-w-md fade-in',
                         style: { minWidth: '400px' }
@@ -616,10 +672,21 @@
                             )
                         ),
                         
-                        // Contrôles
+                        // NOUVEAU : Contrôles (avec Shuffle et Repeat)
                         el('div', {
-                            className: 'flex items-center justify-center gap-8 mb-6'
+                            className: 'flex items-center justify-center gap-7 mb-6' // Espace ajusté
                         },
+                            // Bouton Repeat
+                            el('button', {
+                                onClick: spotify.toggleRepeat,
+                                className: `btn-control ${spotify.repeatMode !== 0 ? 'btn-control-active' : 'text-gray-400 hover:text-white'}`,
+                                style: { color: spotify.repeatMode !== 0 ? accentColor : 'rgba(255,255,255,0.5)' }
+                            }, 
+                                spotify.repeatMode === 2 ? 
+                                    el(RepeatOneIcon, { className: 'w-8 h-8' }) : 
+                                    el(RepeatIcon, { className: 'w-8 h-8' })
+                            ),
+                            // Bouton Précédent
                             el('button', {
                                 onClick: spotify.previousTrack,
                                 className: 'text-gray-300 hover:text-white btn-control'
@@ -632,12 +699,13 @@
                                     el('path', { d: 'M6 18V6h2v12H6zm3.5-6L18 6v12l-8.5-6z' })
                                 )
                             ),
+                            // Bouton Play/Pause
                             el('button', {
                                 onClick: spotify.togglePlay,
-                                className: 'play-button rounded-full p-5 btn-control' // Style dynamique
+                                className: 'play-button rounded-full p-5 btn-control'
                             }, 
                                 el('svg', {
-                                    className: 'w-10 h-10', // Couleur dynamique via 'color' du parent
+                                    className: 'w-10 h-10',
                                     fill: 'currentColor',
                                     viewBox: '0 0 24 24'
                                 },
@@ -646,6 +714,7 @@
                                         el('path', { d: 'M8 5v14l11-7z' })
                                 )
                             ),
+                            // Bouton Suivant
                             el('button', {
                                 onClick: spotify.nextTrack,
                                 className: 'text-gray-300 hover:text-white btn-control'
@@ -657,10 +726,18 @@
                                 },
                                     el('path', { d: 'M16 6v12h2V6h-2zm-1.5 6L6 6v12l8.5-6z' })
                                 )
+                            ),
+                            // Bouton Shuffle
+                            el('button', {
+                                onClick: spotify.toggleShuffle,
+                                className: `btn-control ${spotify.shuffle ? 'btn-control-active' : 'text-gray-400 hover:text-white'}`,
+                                style: { color: spotify.shuffle ? accentColor : 'rgba(255,255,255,0.5)' }
+                            }, 
+                                el(ShuffleIcon, { className: 'w-8 h-8' })
                             )
                         ),
                         
-                        // Volume
+                        // Volume (inchangé)
                         el('div', {
                             className: 'flex items-center gap-4'
                         },
@@ -704,14 +781,21 @@
                 );
             }
 
-            // Bouton de déconnexion
-            const logoutButton = el('div', {
-                className: 'mt-8 flex justify-end'
+            // NOUVEAU : Boutons du bas (Déconnexion et Plein Écran)
+            const bottomButtons = el('div', {
+                className: 'mt-8 flex justify-between items-center'
             },
+                // Bouton Déconnexion
                 el('button', {
                     onClick: spotify.logout,
                     className: 'text-sm text-gray-200 hover:text-white transition-colors font-light'
-                }, 'Déconnexion')
+                }, 'Déconnexion'),
+                // Bouton Plein Écran
+                el('button', {
+                    onClick: toggleFullscreen,
+                    className: 'text-gray-200 hover:text-white transition-colors',
+                    title: isFullscreen ? 'Quitter le plein écran' : 'Passer en plein écran'
+                }, isFullscreen ? el(MinimizeIcon, { className: 'w-5 h-5' }) : el(MaximizeIcon, { className: 'w-5 h-5' }) )
             );
 
             // Rendu final
@@ -720,7 +804,7 @@
                     style: { minHeight: '500px' }
                 }, 
                 playerContent,
-                logoutButton
+                bottomButtons // Remplacé logoutButton par bottomButtons
             );
         }
 
