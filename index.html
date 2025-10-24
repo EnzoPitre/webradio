@@ -15,8 +15,8 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            overflow: hidden; /* Important pour les particules et le fond */
-            background: linear-gradient(135deg, #FF6F61 0%, #FFB347 50%, #FFD700 100%); /* Nouveau dégradé doux */
+            overflow: hidden;
+            background: #000; /* Fond de secours si la vidéo ne charge pas */
             position: relative;
             min-height: 100vh;
             display: flex;
@@ -24,35 +24,24 @@
             justify-content: center;
         }
 
-        /* Conteneur pour les particules */
-        #particle-container {
+        /* NOUVEAU : Vidéo en arrière-plan */
+        #video-bg {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none; /* Permet de cliquer à travers les particules */
-        }
-
-        .particle {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.3); /* Couleurs douces pour les particules */
-            border-radius: 50%;
-            animation: floatAndFade 15s infinite ease-in-out;
-            opacity: 0; /* Commence invisible */
-        }
-
-        @keyframes floatAndFade {
-            0% { transform: translateY(0vh) translateX(0%) scale(0.5); opacity: 0; }
-            20% { opacity: 0.8; }
-            80% { opacity: 0.8; }
-            100% { transform: translateY(-100vh) translateX(50%) scale(1.5); opacity: 0; }
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: 0; /* Placé derrière le contenu */
+            transform: translateX(-50%) translateY(-50%);
+            background-size: cover;
+            filter: blur(5px) brightness(0.7); /* Flou et assombrissement pour la lisibilité */
         }
         
         #root {
             position: relative;
-            z-index: 1;
+            z-index: 1; /* S'assure que le lecteur est au-dessus de la vidéo */
             padding: 2rem;
             width: 100%;
             max-width: 1200px;
@@ -62,16 +51,16 @@
         }
         
         .glass-container {
-            backdrop-filter: blur(25px) saturate(150%); /* Légèrement moins flou, plus saturé pour l'ambiance */
-            background: rgba(255, 255, 255, 0.2); /* Fond plus clair et doux */
+            backdrop-filter: blur(25px) saturate(150%);
+            background: rgba(255, 255, 255, 0.15); /* Légèrement plus clair pour contraster avec la vidéo sombre */
             border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.15); /* Bordure plus visible */
-            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.1); /* Ombre plus douce */
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
         
         .album-glow {
-            box-shadow: 0 15px 45px rgba(255, 179, 71, 0.4); /* Glow adapté au nouveau thème */
+            /* L'ombre est maintenant dynamique via le style en ligne */
         }
         
         .progress-bar {
@@ -80,75 +69,67 @@
             width: 100%;
             height: 6px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.2); /* Plus clair */
+            background: rgba(255, 255, 255, 0.2);
             outline: none;
             transition: all 0.3s ease;
         }
         
+        /* Style de la barre de progression (dynamique) */
         .progress-bar::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #FFD700 0%, #FF6F61 100%); /* Dégradé plus doux pour le curseur */
+            background: #fff; /* Couleur de base, sera surchargée */
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(255, 179, 71, 0.5); /* Ombre adaptée */
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
             transition: all 0.2s ease;
         }
-        
-        .progress-bar::-webkit-slider-thumb:hover {
+         .progress-bar::-webkit-slider-thumb:hover {
             transform: scale(1.15);
-            box-shadow: 0 0 25px rgba(255, 179, 71, 0.7);
         }
-        
         .progress-bar::-moz-range-thumb {
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #FFD700 0%, #FF6F61 100%);
+            background: #fff;
             cursor: pointer;
             border: none;
-            box-shadow: 0 0 15px rgba(255, 179, 71, 0.5);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
         }
         
         .btn-control {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
         .btn-control:hover {
             transform: translateY(-2px) scale(1.05);
         }
-        
         .btn-control:active {
             transform: translateY(0) scale(0.98);
         }
         
         .play-button {
-            background: linear-gradient(135deg, #FFD700 0%, #FF6F61 100%); /* Dégradé plus doux */
-            box-shadow: 0 8px 30px rgba(255, 179, 71, 0.4);
-        }
-        
-        .play-button:hover {
-            box-shadow: 0 12px 40px rgba(255, 179, 71, 0.6);
+             background: #fff; /* Couleur de base, sera surchargée */
+             color: #000; /* Texte noir pour contraster avec le bouton blanc */
         }
         
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); } /* Moins prononcé */
+            50% { transform: translateY(-15px); }
         }
         
         @keyframes pulse-glow {
-            0%, 100% { opacity: 0.6; } /* Plus doux */
+            0%, 100% { opacity: 0.6; }
             50% { opacity: 1; }
         }
         
         .float-animation {
-            animation: float 5s ease-in-out infinite; /* Plus rapide */
+            animation: float 5s ease-in-out infinite;
         }
         
         .pulse-glow {
-            animation: pulse-glow 2.5s ease-in-out infinite; /* Plus rapide */
+            animation: pulse-glow 2.5s ease-in-out infinite;
         }
         
         .visualizer-bar {
@@ -172,11 +153,32 @@
             0% { opacity: 0; transform: scale(0.95); }
             100% { opacity: 1; transform: scale(1); }
         }
+
+        /* NOUVEAU : Style pour les éléments dynamiques */
+        /* Un conteneur pour injecter les styles dynamiques (couleur d'accent) */
+        #dynamic-styles {
+            display: none;
+        }
+
     </style>
 </head>
 <body>
-    <div id="particle-container"></div>
+    <!-- NOUVEAU : Vidéo de fond -->
+    <video autoplay muted loop id="video-bg">
+        <!-- 
+            IMPORTANT : Remplacez ceci par l'URL de votre vidéo hébergée.
+            Exemple si vous l'ajoutez à votre dépôt GitHub :
+            "https://raw.githubusercontent.com/VOTRE_NOM/VOTRE_REPO/main/306343.mp4"
+        -->
+        <source src="306343.mp4" type="video/mp4">
+        Votre navigateur ne supporte pas la vidéo.
+    </video>
+    
+    <!-- SUPPRIMÉ : particle-container -->
     <div id="root"></div>
+
+    <!-- NOUVEAU : Conteneur pour les styles dynamiques -->
+    <style id="dynamic-styles"></style>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -204,37 +206,44 @@
         }
         // ---- FIN DE LA LOGIQUE SDK ----
         
-        // ---- PARTICULES DE FOND ----
-        function createParticles(container) {
-            const numParticles = 30;
-            const particles = [];
+        // SUPPRIMÉ : createParticles
+        
+        // --- Utilitaire pour extraire la couleur moyenne ---
+        function getAverageRGB(imgEl) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const width = imgEl.width;
+            const height = imgEl.height;
+            canvas.width = width;
+            canvas.height = height;
 
-            for (let i = 0; i < numParticles; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                const size = Math.random() * 15 + 5; // Taille entre 5px et 20px
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                particle.style.left = `${Math.random() * 100}%`;
-                particle.style.top = `${100 + Math.random() * 20}%`; // Commencent en dehors de l'écran en bas
-                
-                // Délai et durée d'animation aléatoires
-                particle.style.animationDelay = `${Math.random() * 10}s`;
-                particle.style.animationDuration = `${10 + Math.random() * 10}s`;
+            ctx.drawImage(imgEl, 0, 0);
 
-                container.appendChild(particle);
-                particles.push(particle);
+            let data;
+            try {
+                data = ctx.getImageData(0, 0, width, height).data;
+            } catch (e) {
+                console.error("Impossible d'accéder aux données pixel (erreur CORS): ", e);
+                throw new Error("Erreur CORS lors de la lecture des pixels");
+            }
+            
+            let r = 0, g = 0, b = 0, count = 0;
+            const sampleRate = 100;
+
+            for (let i = 0; i < data.length; i += 4 * sampleRate) {
+                r += data[i];
+                g += data[i+1];
+                b += data[i+2];
+                count++;
             }
 
-            return () => {
-                particles.forEach(p => {
-                    if (p.parentNode) {
-                        p.parentNode.removeChild(p);
-                    }
-                });
-            };
+            r = Math.floor(r / count);
+            g = Math.floor(g / count);
+            b = Math.floor(b / count);
+
+            return { r, g, b };
         }
-        // ---- FIN PARTICULES ----
+        // --- FIN Utilitaire Couleur ---
 
         // Configuration Spotify
         const SPOTIFY_CONFIG = {
@@ -250,33 +259,29 @@
             ]
         };
 
-        // Utilitaires PKCE
+        // Utilitaires PKCE (inchangés)
         function generateRandomString(length) {
             const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             const values = crypto.getRandomValues(new Uint8Array(length));
             return values.reduce((acc, x) => acc + possible[x % possible.length], "");
         }
-
         async function sha256(plain) {
             const encoder = new TextEncoder();
             const data = encoder.encode(plain);
             return window.crypto.subtle.digest('SHA-256', data);
         }
-
         function base64encode(input) {
             return btoa(String.fromCharCode(...new Uint8Array(input)))
                 .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
         }
 
-        // Gestionnaire d'authentification Spotify
+        // Gestionnaire d'authentification Spotify (inchangé)
         class SpotifyAuth {
             static async login() {
                 const codeVerifier = generateRandomString(64);
                 const hashed = await sha256(codeVerifier);
                 const codeChallenge = base64encode(hashed);
-
                 localStorage.setItem('code_verifier', codeVerifier);
-
                 const authUrl = new URL("https://accounts.spotify.com/authorize");
                 const params = {
                     response_type: 'code',
@@ -286,16 +291,13 @@
                     code_challenge: codeChallenge,
                     redirect_uri: SPOTIFY_CONFIG.redirectUri,
                 };
-
                 authUrl.search = new URLSearchParams(params).toString();
                 window.location.href = authUrl.toString();
             }
-
             static async handleCallback() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const code = urlParams.get('code');
                 if (!code) return null;
-
                 const codeVerifier = localStorage.getItem('code_verifier');
                 const payload = {
                     method: 'POST',
@@ -308,10 +310,8 @@
                         code_verifier: codeVerifier,
                     }),
                 };
-
                 const response = await fetch('https://accounts.spotify.com/api/token', payload);
                 const data = await response.json();
-
                 if (data.access_token) {
                     localStorage.setItem('access_token', data.access_token);
                     localStorage.setItem('refresh_token', data.refresh_token);
@@ -320,11 +320,7 @@
                 }
                 return null;
             }
-
-            static getToken() {
-                return localStorage.getItem('access_token');
-            }
-
+            static getToken() { return localStorage.getItem('access_token'); }
             static logout() {
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
@@ -332,7 +328,7 @@
             }
         }
 
-        // Hook Spotify
+        // Hook Spotify (inchangé)
         function useSpotify() {
             const [token, setToken] = useState(null);
             const [player, setPlayer] = useState(null);
@@ -340,6 +336,7 @@
             const [isPlaying, setIsPlaying] = useState(false);
             const [progress, setProgress] = useState(0);
             const [volume, setVolume] = useState(70);
+            const progressIntervalRef = useRef(null);
 
             useEffect(() => {
                 async function initAuth() {
@@ -364,13 +361,10 @@
                         volume: 0.7
                     });
 
-                    spotifyPlayer.addListener('ready', ({ device_id }) => {
-                        console.log('Player ready');
-                    });
+                    spotifyPlayer.addListener('ready', ({ device_id }) => console.log('Player ready'));
 
                     spotifyPlayer.addListener('player_state_changed', state => {
                         if (!state) return;
-                        
                         const track = state.track_window.current_track;
                         setCurrentTrack({
                             id: track.id,
@@ -390,62 +384,50 @@
                         SpotifyAuth.logout();
                         setToken(null);
                     });
-                    
-                    spotifyPlayer.addListener('account_error', ({ message }) => {
-                        console.error('Erreur de compte (Premium requis?):', message);
-                    });
-                    
-                    spotifyPlayer.addListener('initialization_error', ({ message }) => {
-                        console.error('Erreur d\'initialisation:', message);
-                    });
+                    spotifyPlayer.addListener('account_error', ({ message }) => console.error('Erreur de compte:', message));
+                    spotifyPlayer.addListener('initialization_error', ({ message }) => console.error('Erreur d\'initialisation:', message));
 
                     spotifyPlayer.connect();
                     setPlayer(spotifyPlayer);
                 });
 
             }, [token]);
-
-            const togglePlay = useCallback(() => {
-                if (player) player.togglePlay();
-            }, [player]);
-
-            const nextTrack = useCallback(() => {
-                if (player) player.nextTrack();
-            }, [player]);
-
-            const previousTrack = useCallback(() => {
-                if (player) player.previousTrack();
-            }, [player]);
-
-            const seek = useCallback((position) => {
-                if (player) player.seek(position);
-            }, [player]);
-
-            const changeVolume = useCallback((vol) => {
-                if (player) {
-                    player.setVolume(vol / 100);
-                    setVolume(vol);
+            
+            useEffect(() => {
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                if (isPlaying && player) {
+                    progressIntervalRef.current = setInterval(async () => {
+                        try {
+                            const state = await player.getCurrentState();
+                            if (state) setProgress(state.position);
+                        } catch (e) {
+                            console.error("Erreur lors de la récupération de l'état:", e);
+                        }
+                    }, 500);
                 }
+                return () => {
+                    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                };
+            }, [isPlaying, player]);
+
+            const togglePlay = useCallback(() => player?.togglePlay(), [player]);
+            const nextTrack = useCallback(() => player?.nextTrack(), [player]);
+            const previousTrack = useCallback(() => player?.previousTrack(), [player]);
+            const seek = useCallback((position) => player?.seek(position), [player]);
+            const changeVolume = useCallback((vol) => {
+                player?.setVolume(vol / 100);
+                setVolume(vol);
             }, [player]);
 
             return {
-                token,
-                currentTrack,
-                isPlaying,
-                progress,
-                volume,
-                login: SpotifyAuth.login,
-                logout: SpotifyAuth.logout,
-                togglePlay,
-                nextTrack,
-                previousTrack,
-                seek,
-                changeVolume
+                token, currentTrack, isPlaying, progress, volume,
+                login: SpotifyAuth.login, logout: SpotifyAuth.logout,
+                togglePlay, nextTrack, previousTrack, seek, changeVolume
             };
         }
 
         // Visualiseur audio simple
-        function AudioVisualizer({ isPlaying }) {
+        function AudioVisualizer({ isPlaying, accentColor }) {
             const [bars, setBars] = useState([0, 0, 0, 0, 0]);
 
             useEffect(() => {
@@ -453,17 +435,15 @@
                     setBars([0, 0, 0, 0, 0]);
                     return;
                 }
-
                 const interval = setInterval(() => {
                     setBars([
-                        Math.random() * 30 + 5, /* Hauteur des barres plus douce */
+                        Math.random() * 30 + 5,
                         Math.random() * 40 + 10,
                         Math.random() * 50 + 15,
                         Math.random() * 40 + 10,
                         Math.random() * 30 + 5
                     ]);
                 }, 150);
-
                 return () => clearInterval(interval);
             }, [isPlaying]);
 
@@ -472,13 +452,16 @@
             }, bars.map((height, i) => 
                 el('div', {
                     key: i,
-                    className: 'w-2 bg-gradient-to-t from-orange-400 to-red-400 rounded-full visualizer-bar', /* Couleurs adaptées */
-                    style: { height: height + 'px' }
+                    className: 'w-2 rounded-full visualizer-bar',
+                    style: { 
+                        height: height + 'px',
+                        background: accentColor || '#FFF' // Utilise la couleur d'accent
+                    }
                 })
             ));
         }
 
-        // Formater temps
+        // Formater temps (inchangé)
         function formatTime(ms) {
             const seconds = Math.floor(ms / 1000);
             const mins = Math.floor(seconds / 60);
@@ -489,27 +472,61 @@
         // Composant principal
         function Player() {
             const spotify = useSpotify();
-            // audioLevel n'est plus utilisé pour le Three.js, mais gardé au cas où pour d'autres effets
-            const [audioLevel, setAudioLevel] = useState(0); 
-
-            // ---- PARTICULES DE FOND ----
+            const [accentColor, setAccentColor] = useState(null); // État pour la couleur d'accent
+            
+            // SUPPRIMÉ : useEffect pour les particules
+            
+            // --- MODIFIÉ : Effet pour changer la COULEUR D'ACCENT (plus le fond) ---
             useEffect(() => {
-                const container = document.getElementById('particle-container');
-                if (container) {
-                    const cleanup = createParticles(container);
-                    return cleanup;
+                const defaultAccent = '#FFB347'; // Orange par défaut
+                
+                if (!spotify.currentTrack || !spotify.currentTrack.albumArtUrl) {
+                    setAccentColor(defaultAccent);
+                    return;
                 }
-            }, []);
-            // ---- FIN PARTICULES ----
 
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = spotify.currentTrack.albumArtUrl;
+
+                img.onload = () => {
+                    try {
+                        const avgColor = getAverageRGB(img);
+                        const accent = `rgb(${avgColor.r}, ${avgColor.g}, ${avgColor.b})`;
+                        setAccentColor(accent);
+                    } catch (e) {
+                        setAccentColor(defaultAccent);
+                    }
+                };
+                img.onerror = () => {
+                    console.error("Erreur chargement image (CORS), couleur d'accent par défaut.");
+                    setAccentColor(defaultAccent);
+                };
+
+            }, [spotify.currentTrack]); // Se redéclenche à chaque changement de piste
+            // --- FIN Effet Couleur ---
+
+            // --- NOUVEAU : Effet pour injecter les styles CSS dynamiques ---
             useEffect(() => {
-                if (spotify.isPlaying) {
-                    const interval = setInterval(() => {
-                        setAudioLevel(Math.random() * 0.8 + 0.2);
-                    }, 100);
-                    return () => clearInterval(interval);
-                }
-            }, [spotify.isPlaying]);
+                const styleTag = document.getElementById('dynamic-styles');
+                if (!styleTag || !accentColor) return;
+
+                // Calcule une couleur de texte (noir ou blanc) basée sur la luminosité de l'accent
+                const [r, g, b] = accentColor.match(/\d+/g).map(Number);
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                const textColor = brightness > 125 ? '#000' : '#fff';
+
+                styleTag.innerHTML = `
+                    .album-glow { box-shadow: 0 15px 45px ${accentColor}66; } /* 66 = 40% opacité */
+                    .progress-bar::-webkit-slider-thumb { background: ${accentColor}; box-shadow: 0 0 15px ${accentColor}99; }
+                    .progress-bar::-moz-range-thumb { background: ${accentColor}; box-shadow: 0 0 15px ${accentColor}99; }
+                    .play-button { background: ${accentColor}; color: ${textColor}; box-shadow: 0 8px 30px ${accentColor}66; }
+                    .play-button:hover { box-shadow: 0 12px 40px ${accentColor}99; }
+                    .visualizer-bar { background: ${accentColor}; }
+                `;
+            }, [accentColor]);
+            // --- FIN Effet Styles ---
+
 
             if (!spotify.token) {
                 return el('div', {
@@ -518,7 +535,7 @@
                     },
                         el('div', { className: 'mb-8 float-animation' }, 
                             el('div', {
-                                className: 'w-24 h-24 mx-auto bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center', /* Couleurs adaptées */
+                                className: 'w-24 h-24 mx-auto bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center',
                                 style: { boxShadow: '0 20px 60px rgba(255, 179, 71, 0.4)' }
                             },
                                 el('svg', {
@@ -537,7 +554,7 @@
                             style: { letterSpacing: '0.05em' }
                         }, 'Ambient Flow'),
                         el('p', {
-                            className: 'text-gray-200 mb-10 font-light text-lg' /* Texte plus clair */
+                            className: 'text-gray-200 mb-10 font-light text-lg'
                         }, 'Votre espace musical immersif'),
                         el('button', {
                             onClick: spotify.login,
@@ -546,7 +563,7 @@
                 );
             }
 
-            // --- CORRECTION : Logique de rendu sortie du return ---
+            // --- Logique de rendu sortie du return ---
             let playerContent;
             if (spotify.currentTrack) {
                 playerContent = el('div', { className: 'flex flex-col md:flex-row gap-10 track-change' },
@@ -557,10 +574,10 @@
                         el('img', {
                             src: spotify.currentTrack.albumArtUrl || '',
                             alt: spotify.currentTrack.album,
-                            className: 'w-72 h-72 rounded-3xl shadow-2xl object-cover album-glow',
+                            className: 'w-72 h-72 rounded-3xl shadow-2xl object-cover album-glow', // Ombre dynamique
                             style: { border: '1px solid rgba(255, 255, 255, 0.15)' }
                         }),
-                        el(AudioVisualizer, { isPlaying: spotify.isPlaying })
+                        el(AudioVisualizer, { isPlaying: spotify.isPlaying, accentColor: accentColor })
                     ),
                     
                     // Enfant 2 : Infos et Contrôles
@@ -573,7 +590,8 @@
                                 className: 'text-4xl md:text-5xl font-light text-white mb-3 leading-tight'
                             }, spotify.currentTrack.title),
                             el('p', {
-                                className: 'text-2xl text-orange-200 font-light italic mb-2'
+                                className: 'text-2xl text-orange-200 font-light italic mb-2',
+                                style: { color: accentColor || '#FAC' } // Couleur d'accent
                             }, spotify.currentTrack.artist),
                             el('p', {
                                 className: 'text-base text-gray-200 font-light'
@@ -611,15 +629,15 @@
                                     fill: 'currentColor',
                                     viewBox: '0 0 24 24'
                                 },
-                                    el('path', { d: 'M6 6h2v12H6zm3.5 6l8.5 6V6z' })
+                                    el('path', { d: 'M6 18V6h2v12H6zm3.5-6L18 6v12l-8.5-6z' })
                                 )
                             ),
                             el('button', {
                                 onClick: spotify.togglePlay,
-                                className: 'play-button rounded-full p-5 btn-control'
+                                className: 'play-button rounded-full p-5 btn-control' // Style dynamique
                             }, 
                                 el('svg', {
-                                    className: 'w-10 h-10 text-white',
+                                    className: 'w-10 h-10', // Couleur dynamique via 'color' du parent
                                     fill: 'currentColor',
                                     viewBox: '0 0 24 24'
                                 },
@@ -637,7 +655,7 @@
                                     fill: 'currentColor',
                                     viewBox: '0 0 24 24'
                                 },
-                                    el('path', { d: 'M16 18h2V6h-2zm-11-7l8.5-6v12z' })
+                                    el('path', { d: 'M16 6v12h2V6h-2zm-1.5 6L6 6v12l8.5-6z' })
                                 )
                             )
                         ),
@@ -669,7 +687,8 @@
                 playerContent = el('div', { className: 'text-center py-20' },
                     el('div', { className: 'mb-6 pulse-glow' },
                         el('svg', {
-                            className: 'w-20 h-20 text-orange-400 mx-auto',
+                            className: 'w-20 h-20 text-orange-400 mx-auto', // Couleur par défaut
+                            style: { color: accentColor || '#F6AD55' },
                             fill: 'currentColor',
                             viewBox: '0 0 24 24'
                         },
